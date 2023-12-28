@@ -34,6 +34,7 @@
 #include "nvtop/interface.h"
 #include "nvtop/interface_common.h"
 #include "nvtop/interface_options.h"
+#include "nvtop/print_gpuinfo_json.h"
 #include "nvtop/time.h"
 #include "nvtop/version.h"
 
@@ -53,6 +54,7 @@ static void resize_handler(int signum) {
 static const char helpstring[] = "Available options:\n"
                                  "  -d --delay        : Select the refresh rate (1 == 0.1s)\n"
                                  "  -v --version      : Print the version and exit\n"
+                                 "  -j --json         : Print gpu information to stdout as JSON\n"
                                  "  -c --config-file  : Provide a custom config file location to load/save "
                                  "preferences\n"
                                  "  -p --no-plot      : Disable bar plot\n"
@@ -71,6 +73,7 @@ static const char versionString[] = "nvtop version " NVTOP_VERSION_STRING;
 static const struct option long_opts[] = {
     {.name = "delay", .has_arg = required_argument, .flag = NULL, .val = 'd'},
     {.name = "version", .has_arg = no_argument, .flag = NULL, .val = 'v'},
+    {.name = "json", .has_arg = no_argument, .flag = NULL, .val = 'j'},
     {.name = "help", .has_arg = no_argument, .flag = NULL, .val = 'h'},
     {.name = "config-file", .has_arg = required_argument, .flag = NULL, .val = 'c'},
     {.name = "no-color", .has_arg = no_argument, .flag = NULL, .val = 'C'},
@@ -83,7 +86,7 @@ static const struct option long_opts[] = {
     {0, 0, 0, 0},
 };
 
-static const char opts[] = "hvd:c:CfE:pri";
+static const char opts[] = "hvjd:c:CfE:pri";
 
 int main(int argc, char **argv) {
   (void)setlocale(LC_CTYPE, "");
@@ -97,6 +100,7 @@ int main(int argc, char **argv) {
   bool reverse_plot_direction_option = false;
   bool encode_decode_timer_option_set = false;
   bool show_gpu_info_bar = false;
+  bool print_json_info = false;
   double encode_decode_hide_time = -1.;
   char *custom_config_file_path = NULL;
   while (true) {
@@ -129,6 +133,9 @@ int main(int argc, char **argv) {
     case 'h':
       printf("%s\n%s", versionString, helpstring);
       exit(EXIT_SUCCESS);
+    case 'j':
+      print_json_info = true;
+      break;
     case 'c':
       custom_config_file_path = optarg;
       break;
@@ -246,6 +253,11 @@ int main(int argc, char **argv) {
   gpuinfo_populate_static_infos(&monitoredGpus);
   unsigned numMonitoredGpus =
       interface_check_and_fix_monitored_gpus(allDevCount, &monitoredGpus, &nonMonitoredGpus, &allDevicesOptions);
+
+  if (print_json_info) {
+    print_gpuinfo_json(&monitoredGpus);
+    return EXIT_SUCCESS;
+  }
 
   if (allDevicesOptions.show_startup_messages) {
     bool dont_show_again = show_information_messages(numWarningMessages, warningMessages);
